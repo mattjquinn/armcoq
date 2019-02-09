@@ -1,36 +1,47 @@
+(* TODO: Replace Z with 32bit datatype
+   everywhere applicable.
+   TODO: Switch from using strings as register
+   names to using an inductive type; will require
+   defnining decisional equality for the type.
+*)
+
 Require Import List String Omega ZArith.
 
 Local Open Scope string_scope.
 Local Open Scope list_scope.
 Local Open Scope Z_scope.
 
-Definition channel : Type := list string.
-Definition msg : string := " ""Message."" ".
-Record netstate := NetState {t : Z; r : Z; c1 : channel; c2 : channel}.
-Definition initial := {| t := 5 ; r := 5 ; c1 := nil ; c2 := nil |}.
+Import ListNotations.
 
-Inductive netEvalR : netstate -> netstate -> Prop :=
-| Initial : (netEvalR initial initial)
-| Step1 : forall st st',
-    netEvalR st st' ->
-    st'.(t) > 0 ->
-    (netEvalR st' {| t := st'.(t) - 1 ; r := st'.(r) ;
-                     c1 := msg :: st'.(c1) ; c2 := st'.(c2) |})
-| Step2 : forall st st',
-    netEvalR st st' ->
-    st'.(c2) <> nil ->
-    (netEvalR st' {| t := st'.(t) + 1 ; r := st'.(r) ;
-                     c1 := st'.(c1) ; c2 := (tl st'.(c2)) |})
-| Step3 : forall st st',
-    netEvalR st st' ->
-    st'.(c1) <> nil ->
-    (netEvalR st' {| t := st'.(t) ; r := st'.(r) + 1 ;
-                    c1 := (tl st'.(c1)) ; c2 := st'.(c2) |})
-| Step4 : forall st st',
-    netEvalR st st' ->
-    st'.(r) > 0 ->
-    (netEvalR st' {| t := st'.(t) ; r := st'.(r) - 1 ;
-                     c1 := st'.(c1) ; c2 := (msg :: st'.(c2)) |}).
+
+Definition eqb_string (x y : string) : bool :=
+  if string_dec x y then true else false.
+Definition total_map (A : Type) := string -> A.
+ Definition t_empty {A : Type} (v : A) : total_map A := (fun _ => v).
+Definition t_update {A : Type} (m : total_map A) (x : string) (v : A) :=
+  fun x' => if (eqb_string x x') then v else m x'.
+
+Definition reg_state := total_map Z.
+(* Inductive reg : Set := | r6. *)
+
+Inductive ins : Set :=
+| mov : string -> Z -> ins.
+
+Inductive arm : Set :=
+| AArm : list ins -> arm.
+
+Inductive armR : ins -> reg_state -> reg_state -> Prop :=
+| EMov : forall st st' reg cnst,
+    armR (mov reg cnst) st (t_update st' reg cnst).
+
+(* ====================================================================== *)
+
+Definition AddLoopArm : arm :=
+  (AArm [
+       (mov "r6" 5)
+  ]).
+
+
 
 Definition safety1 (st' : netstate) : Prop := st'.(t) >= 0 /\ st'.(r) >= 0.
       

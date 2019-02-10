@@ -13,18 +13,36 @@ Inductive reg : Set := r3 | r6 | r8.
 Definition reg_dec : forall r r' : reg, {r = r'} + {r <> r'}.
 Proof. intros. decide equality. Defined.
 
-Inductive bitvec : Type := BV (n : nat) (v: Vector.t bool n).
+Inductive bitvec (n : nat): Type :=
+| BEndian (v: Vector.t bool n)
+| LEndian (v: Vector.t bool n).
 
-Fixpoint bitvecstr {n} (v : Vector.t bool n) : string :=
-  match v with
-  | true :: tl => "1" ++ bitvecstr tl
-  | false :: tl => "0" ++ bitvecstr tl
-  | _ => ""
+Fixpoint bitvecstr {n} (lendian : bool) (v : Vector.t bool n) : string :=
+  match lendian, v with
+  | false, true :: tl => "1" ++ bitvecstr lendian tl
+  | false, false :: tl => "0" ++ bitvecstr lendian tl
+  | true, true :: tl =>  bitvecstr lendian tl ++ "1"
+  | true, false :: tl => bitvecstr lendian tl ++ "0"
+  | _, [] => ""
   end.
-Definition bvstr (v : bitvec) := match v with | BV _ bv => bitvecstr bv end.
 
-Definition ex1 := BV 4 ([false; true; true; false]).
+Definition bvstr {n} (bv : bitvec n) : string :=
+  match bv with
+  | BEndian _ v => bitvecstr false v
+  | LEndian _ v => bitvecstr true v
+  end.
+
+Definition ex1 := BEndian 4 ([true; true; true; false]).
 Compute bvstr ex1.
+Definition ex2 := LEndian 4 ([true; true; true; false]).
+Compute bvstr ex2.
+
+Fixpoint add_bv {n} (v1: bitvec n) (v2: bitvec n) : bitvec n :=
+  match (bvunwrap v1), (bvunwrap v2) with
+  | , _ => v1
+  end.
+
+
 
 Definition eqb_string (x y : string) : bool :=
   if string_dec x y then true else false.

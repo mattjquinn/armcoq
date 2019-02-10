@@ -2,18 +2,29 @@
    everywhere applicable.
 *)
 
-Require Import List String Omega ZArith.
+Require Import Omega String ZArith Vector.
 
-Local Open Scope string_scope.
-Local Open Scope list_scope.
+Local Open Scope vector_scope.
 Local Open Scope Z_scope.
 
-Import ListNotations.
+Import VectorNotations.
 
 Inductive reg : Set := r3 | r6 | r8.
 Definition reg_dec : forall r r' : reg, {r = r'} + {r <> r'}.
 Proof. intros. decide equality. Defined.
 
+Inductive bitvec : Type := BV (n : nat) (v: Vector.t bool n).
+
+Fixpoint bitvecstr {n} (v : Vector.t bool n) : string :=
+  match v with
+  | true :: tl => "1" ++ bitvecstr tl
+  | false :: tl => "0" ++ bitvecstr tl
+  | _ => ""
+  end.
+Definition bvstr (v : bitvec) := match v with | BV _ bv => bitvecstr bv end.
+
+Definition ex1 := BV 4 ([false; true; true; false]).
+Compute bvstr ex1.
 
 Definition eqb_string (x y : string) : bool :=
   if string_dec x y then true else false.

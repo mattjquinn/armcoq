@@ -24,53 +24,33 @@ Definition t_update {A : Type} (m : total_map A) (x : string) (v : A) :=
 Definition reg_state := total_map Z.
 (* Inductive reg : Set := | r6. *)
 
-Inductive ins : Set :=
+Inductive ins : Type :=
+| seq : ins -> ins -> ins
 | mov : string -> Z -> ins.
 
-Inductive arm : Set :=
-| AArm : list ins -> arm.
+Notation "i1 ;; i2" :=
+  (seq i1 i2) (at level 80, right associativity).
 
 Inductive armR : ins -> reg_state -> reg_state -> Prop :=
+| ESeq : forall i1 i2 st st' st'',
+    armR i1 st st' ->
+    armR i2 st' st'' ->
+    armR (i1 ;; i2) st st''
 | EMov : forall st st' reg cnst,
     armR (mov reg cnst) st (t_update st' reg cnst).
 
 (* ====================================================================== *)
 
-Definition AddLoopArm : arm :=
-  (AArm [
-       (mov "r6" 5)
-  ]).
-
-
-
-Definition safety1 (st' : netstate) : Prop := st'.(t) >= 0 /\ st'.(r) >= 0.
-      
-Lemma safety1_holds: forall st st' : netstate,
-         (netEvalR st st') ->
-         safety1 st'.
+Definition AddLoopArm : ins :=
+  (mov "r6" 5) ;;
+  (mov "r3" 2) ;;
+  (mov "r6" 8).
+  
+Lemma finalstate8: forall st st' : reg_state,
+         (armR AddLoopArm st st') ->
+         st' "r6" = 8.
 Proof.
-  intros st st' H. split; induction H; simpl; omega.
-Qed.
-
-Definition safety2 (st' : netstate) : Prop :=
-  Zlength st'.(c1) + Zlength st'.(c2) + st'.(t) + st'.(r) = 10.
-
-Lemma safety2_holds : forall st st' : netstate,
-    (netEvalR st st') ->
-    safety2 st'.
-Proof.
-  intros st st' H. unfold safety2. induction H; simpl;
-    try reflexivity;                           (* Initial state *)
-    try (rewrite Zlength_cons; omega);         (* Steps 1 and 4 *)
-    [destruct (c2 st') | destruct (c1 st')];   (* Steps 2 and 3 *)
-      try contradiction;
-      (simpl; rewrite Zlength_cons in IHnetEvalR; omega).
-Qed.
-
-Theorem safety_holds : forall st st' : netstate,
-      (netEvalR st st') -> safety1 st' /\ safety2 st'.
-Proof.
-  intros st st' H. split;
-  [apply (safety1_holds st st') | apply (safety2_holds st st')];
-    assumption.
+  unfold AddLoopArm. intros. inversion H. subst.
+  inversion H5. subst. inversion H7. subst. unfold t_update.
+  reflexivity.
 Qed.
